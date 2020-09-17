@@ -1,9 +1,12 @@
+use crate::iter::RocksDBIterator;
 use pyo3::create_exception;
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyString};
-use rocksdb::{Options, DB};
+use rocksdb::{IteratorMode, Options, DB};
 use std::str;
+
+mod iter;
 
 create_exception!(rocksdb3, RocksDBError, PyRuntimeError);
 
@@ -78,6 +81,13 @@ fn rocksdb3(_py: Python, m: &PyModule) -> PyResult<()> {
                     )))
                 }
             }
+        }
+
+        fn get_iter(&mut self, keys: Py<PyBytes>) -> PyResult<RocksDBIterator> {
+            Ok(RocksDBIterator {
+                db: self.db,
+                inner: self.db.iterator(IteratorMode::Start),
+            })
         }
     }
 
