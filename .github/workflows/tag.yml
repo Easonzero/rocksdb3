@@ -45,8 +45,11 @@ jobs:
           default: true
           profile: minimal
       - name: Set up llvm for windows
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: "10.0"
+          directory: ~/.clang
         if: runner.os == 'Windows'
-        run: choco install llvm -y
       - name: install maturin
         run: pip install maturin
         # On Linux we'll run Maturin in a Docker container.

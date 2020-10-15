@@ -8,7 +8,7 @@ on:
 
 jobs:
   tests:
-    name: py${{ matrix.python-version }}-${{ matrix.platform.python-architecture }}, Rust ${{ matrix.rust-toolchain }}, ${{ matrix.platform.os }}
+    name: py${{ matrix.python-version }}-${{ matrix.platform.architecture }}, ${{ matrix.platform.os }}
     runs-on: ${{ matrix.platform.os }}
     strategy:
       matrix:
@@ -16,10 +16,10 @@ jobs:
         # rust-toolchain: [stable, beta, nightly]
         rust-toolchain: [stable]
         platform: [
-          { os: "ubuntu-latest",  python-architecture: "x64", rust-target: "x86_64-unknown-linux-gnu" },
-          { os: "macOS-latest",   python-architecture: "x64", rust-target: "x86_64-apple-darwin" },
-          { os: "windows-latest", python-architecture: "x64", rust-target: "x86_64-pc-windows-msvc" },
-          # { os: "windows-latest", python-architecture: "x86", rust-target: "i686-pc-windows-msvc" },
+          #{ os: "ubuntu-latest",  architecture: "x64", rust-target: "x86_64-unknown-linux-gnu" },
+          #{ os: "macOS-latest",   architecture: "x64", rust-target: "x86_64-apple-darwin" },
+          { os: "windows-latest", architecture: "x64", rust-target: "x86_64-pc-windows-msvc" },
+          # { os: "windows-latest", architecture: "x86", rust-target: "i686-pc-windows-msvc" },
         ]
       fail-fast: false
     env:
@@ -32,14 +32,27 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-${{ matrix.platform.python-architecture }}-cargo-${{ matrix.rust-toolchain }}-${{ hashFiles('**/Cargo.toml') }}
+          key: ${{ runner.os }}-${{ matrix.platform.architecture }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.platform.python-architecture }}-cargo-${{ matrix.rust-toolchain }}-
+            ${{ runner.os }}-${{ matrix.platform.architecture }}-
+      - name: Get choco cache directory
+        id: choco-cache
+        run: |
+          echo "::set-output name=dir::$(choco config get cacheLocation)"
+        shell: bash
+        if: runner.os == 'Windows'
+      - name: Cache for windows
+        uses: actions/cache@v2
+        with:
+          path: |
+            ${{ steps.choco-cache.outputs.dir }}
+          key: ${{ runner.os }}-${{ matrix.platform.architecture }}
+        if: runner.os == 'Windows'
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-          architecture: ${{ matrix.platform.python-architecture }}
+          architecture: ${{ matrix.platform.architecture }}
       - run: python tests/python_info.py
       - name: Set up Rust
         uses: actions-rs/toolchain@v1
@@ -48,9 +61,9 @@ jobs:
           target: ${{ matrix.platform.rust-target }}
           default: true
           profile: minimal
-      - name: Install llvm
-        if: runner.os == 'Windows'
+      - name: Install llvm for windows
         run: choco install llvm -y
+        if: runner.os == 'Windows' && steps.choco-cache.outputs.cache-hit != 'true'
       - name: Install pytest
         run: pip install pytest
       - name: Run build.py
