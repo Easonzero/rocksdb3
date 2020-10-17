@@ -35,20 +35,6 @@ jobs:
           key: ${{ runner.os }}-${{ matrix.platform.architecture }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
             ${{ runner.os }}-${{ matrix.platform.architecture }}-
-      - name: Get choco cache directory
-        id: choco-cache
-        run: |
-          mkdir c:\choco-temp
-          choco config set cacheLocation c:\choco-temp
-          echo "::set-output name=dir::$(choco config get cacheLocation)"
-        if: runner.os == 'Windows'
-      - name: Cache for windows
-        uses: actions/cache@v2
-        with:
-          path: |
-            ${{ steps.choco-cache.outputs.dir }}
-          key: ${{ runner.os }}-${{ matrix.platform.architecture }}-ver2
-        if: runner.os == 'Windows'
       - name: Set up Python
         uses: actions/setup-python@v2
         with:
