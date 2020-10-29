@@ -1,12 +1,10 @@
-use crate::iter::RocksDBIterator;
 use pyo3::create_exception;
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 use pyo3::types::{PyBytes, PyString};
-use rocksdb::{IteratorMode, Options, DB};
+use rocksdb::{DBIterator, IteratorMode, Options, DB};
+use std::collections::HashMap;
 use std::str;
-
-mod iter;
 
 create_exception!(rocksdb3, RocksDBError, PyRuntimeError);
 
@@ -18,6 +16,8 @@ fn rocksdb3(_py: Python, m: &PyModule) -> PyResult<()> {
     struct RocksDB {
         db: DB,
         path: Vec<u8>,
+        iter_id: u64,
+        iters: HashMap<u64, DBIterator>,
     }
 
     #[pymethods]
@@ -83,11 +83,11 @@ fn rocksdb3(_py: Python, m: &PyModule) -> PyResult<()> {
             }
         }
 
-        fn get_iter(&mut self, keys: Py<PyBytes>) -> PyResult<RocksDBIterator> {
-            Ok(RocksDBIterator {
-                db: self.db,
-                inner: self.db.iterator(IteratorMode::Start),
-            })
+        fn iter_start<'py>(&mut self) -> u64 {
+            self.iter_id += 1;
+            let iter = &self.db.iterator(IteratorMode::Start);
+            self.iters.insert(self.iter_id, iter);
+            return self.iter_id;
         }
     }
 
@@ -101,6 +101,8 @@ fn rocksdb3(_py: Python, m: &PyModule) -> PyResult<()> {
             Ok(db) => Ok(RocksDB {
                 db: db,
                 path: path.as_bytes().to_vec(),
+                iter_id: 1,
+                iters: HashMap::new(),
             }),
             Err(e) => {
                 return Err(RocksDBError::new_err(format!(
